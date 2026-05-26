@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pizza Master</title>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323:wght@400&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--red:#D62828;--green:#2DC653;--darkbg:#1A0A00;--dark2:#2E1500;--dark3:#3D1F00;--border:#FF9900;--text:#FFE066;}
+body{background:var(--darkbg);font-family:'Press Start 2P',monospace;color:var(--text);min-height:100vh;display:flex;flex-direction:column;align-items:center;overflow-x:hidden}
+body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(255,153,0,0.04)1px,transparent 1px),linear-gradient(90deg,rgba(255,153,0,0.04)1px,transparent 1px);background-size:16px 16px;pointer-events:none;z-index:0}
+body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.06)2px,rgba(0,0,0,0.06)4px);pointer-events:none;z-index:9999}
+#app{position:relative;z-index:1;width:100%;max-width:860px;padding:12px}
+
+/* LOADING */
+#loading-screen{position:fixed;inset:0;background:var(--darkbg);z-index:500;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:24px}
+.load-title{font-size:clamp(18px,4vw,30px);color:var(--border);text-shadow:4px 4px 0 var(--red),8px 8px 0 #7a3800;margin-bottom:20px;letter-spacing:3px}
+#load-bar-wrap{width:260px;height:18px;border:3px solid var(--border);background:var(--dark3);margin:16px auto 10px}
+#load-bar{height:100%;width:0%;background:var(--border)}
+#load-text{font-family:'VT323',monospace;font-size:22px;color:#ff9900aa;min-height:28px}
+#load-pizza-canvas{display:block;margin:0 auto 16px;image-rendering:pixelated}
+
+/* START */
+#start-screen{position:fixed;inset:0;background:var(--darkbg);z-index:400;display:none;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:24px}
+.big-title{font-size:clamp(16px,4vw,28px);color:var(--border);text-shadow:4px 4px 0 var(--red);margin-bottom:16px}
+.screen-sub{font-family:'VT323',monospace;font-size:22px;color:#ccc;margin-bottom:24px;max-width:500px;line-height:1.6}
+
+/* GAME OVER */
+#gameover-screen{position:fixed;inset:0;background:var(--darkbg);z-index:400;display:none;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:24px}
+
+/* HELP MODAL */
+#help-modal{position:fixed;inset:0;background:rgba(0,0,0,0.78);z-index:300;display:none;align-items:center;justify-content:center}
+#help-modal.show{display:flex}
+#help-inner{background:var(--dark2);border:4px solid var(--border);padding:20px 22px;max-width:480px;width:92%;max-height:88vh;overflow-y:auto;animation:popIn 0.18s ease;position:relative}
+#help-inner h2{font-size:11px;color:var(--border);text-align:center;margin-bottom:14px;text-shadow:2px 2px 0 var(--red)}
+.help-section{margin-bottom:14px}
+.help-section h3{font-size:8px;color:var(--border);margin-bottom:7px;border-bottom:1px solid #ff990033;padding-bottom:3px}
+.help-row{display:flex;align-items:flex-start;gap:10px;margin-bottom:7px}
+.help-num{font-size:12px;color:var(--border);min-width:30px;padding-top:2px}
+.help-desc{font-family:'VT323',monospace;font-size:18px;color:#ddd;line-height:1.4}
+.help-tip{font-family:'VT323',monospace;font-size:17px;color:#ccc;line-height:1.5;margin-bottom:5px}
+#help-close{position:absolute;top:10px;right:10px;background:none;border:2px solid var(--border);color:var(--border);font-family:'Press Start 2P',monospace;font-size:8px;padding:4px 7px;cursor:pointer}
+
+/* HEADER */
+header{text-align:center;padding:18px 0 10px;border-bottom:4px solid var(--border);margin-bottom:14px;position:relative}
+header h1{font-size:clamp(14px,3vw,22px);color:var(--border);text-shadow:3px 3px 0 var(--red),6px 6px 0 #7a3800;letter-spacing:2px}
+header .sub{font-family:'VT323',monospace;font-size:20px;color:#ff9900cc;margin-top:4px}
+#help-btn{position:absolute;top:50%;right:0;transform:translateY(-50%);width:32px;height:32px;background:var(--dark3);border:2px solid var(--border);color:var(--border);font-family:'Press Start 2P',monospace;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+#help-btn:hover{background:var(--border);color:#000}
+
+/* SCOREBOARD */
+#scoreboard{display:flex;justify-content:space-between;align-items:center;background:var(--dark2);border:3px solid var(--border);padding:8px 14px;margin-bottom:10px}
+.stat{text-align:center}
+.stat .label{font-size:7px;color:#ff990099;display:block;margin-bottom:3px}
+.stat .val{font-size:14px;color:var(--text)}
+#lives-display{display:flex;gap:4px;align-items:center}
+
+/* CUSTOMER */
+#customer-panel{background:var(--dark2);border:3px solid var(--border);padding:10px 14px;margin-bottom:10px;display:flex;gap:14px;align-items:center}
+#customer-sprite{width:64px;height:64px;image-rendering:pixelated;flex-shrink:0}
+#customer-bubble{flex:1;background:var(--dark3);border:2px solid var(--border);padding:8px 10px;position:relative}
+#customer-bubble::before{content:'';position:absolute;left:-10px;top:50%;transform:translateY(-50%);border:5px solid transparent;border-right-color:var(--border)}
+#customer-text{font-size:9px;color:#ffe;line-height:1.8}
+#target-display{font-size:11px;color:var(--border);margin-top:5px}
+
+/* GAME AREA */
+#game-area{display:flex;gap:10px;align-items:flex-start;justify-content:center;margin-bottom:10px}
+#canvas-wrap{position:relative;background:var(--dark2);border:3px solid var(--border);display:inline-block}
+#pizza-canvas{display:block;cursor:crosshair;image-rendering:pixelated;touch-action:none}
+#side-panel{width:160px;flex-shrink:0}
+.panel-box{background:var(--dark2);border:3px solid var(--border);padding:8px;margin-bottom:8px}
+.panel-box h3{font-size:7px;color:var(--border);margin-bottom:6px}
+.panel-box p{font-size:8px;color:#ccc;line-height:1.7}
+#cut-list{list-style:none;font-family:'VT323',monospace;font-size:16px}
+#cut-list li{padding:2px 0;color:#aaa}
+
+/* TIMER */
+#timer-wrap{width:100%;background:var(--dark3);border:2px solid var(--border);height:14px;margin-bottom:8px;position:relative}
+#timer-bar{height:100%;background:var(--green);transition:width 0.1s linear,background 0.3s}
+#timer-paused{position:absolute;inset:0;display:none;align-items:center;justify-content:center;font-size:7px;color:var(--border);background:rgba(26,10,0,0.8);letter-spacing:1px}
+#streak-label{font-size:8px;color:#f7b731;text-align:center;min-height:16px;margin-bottom:4px}
+
+/* BUTTONS */
+.btn{font-family:'Press Start 2P',monospace;font-size:9px;padding:8px 12px;border:3px solid;cursor:pointer;letter-spacing:1px;transition:transform 0.07s,box-shadow 0.07s;outline:none}
+.btn:active{transform:translate(2px,2px);box-shadow:none!important}
+.btn-red{background:var(--red);border-color:#ff6666;color:#fff;box-shadow:3px 3px 0 #7a0000}
+.btn-green{background:#1a6e1a;border-color:var(--green);color:var(--green);box-shadow:3px 3px 0 #0a3a0a}
+.btn-yellow{background:#5c4500;border-color:var(--border);color:var(--border);box-shadow:3px 3px 0 #2a1f00}
+#btn-row{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+
+/* FEEDBACK */
+#feedback{position:fixed;top:0;left:0;right:0;bottom:0;display:none;align-items:center;justify-content:center;z-index:100;pointer-events:none;background:rgba(0,0,0,0.5)}
+#feedback.show{display:flex}
+#feedback-inner{background:var(--dark2);border:4px solid var(--border);padding:24px 32px;text-align:center;pointer-events:all;animation:popIn 0.2s ease}
+@keyframes popIn{0%{transform:scale(0.5)}80%{transform:scale(1.05)}100%{transform:scale(1)}}
+#feedback-title{font-size:18px;margin-bottom:8px}
+#feedback-msg{font-family:'VT323',monospace;font-size:20px;color:#ccc;margin-bottom:14px;white-space:pre-line}
+</style>
+</head>
+<body>
+
+<!-- LOADING -->
+<div id="loading-screen">
+  <div class="load-title">PIZZA MASTER</div>
+  <canvas id="load-pizza-canvas" width="160" height="160"></canvas>
+  <div id="load-bar-wrap"><div id="load-bar"></div></div>
+  <div id="load-text">Preheating the oven...</div>
+</div>
+
+<!-- START -->
+<div id="start-screen">
+  <div class="big-title">PIZZA MASTER</div>
+  <canvas id="start-pizza" width="160" height="160" style="display:block;margin:0 auto 18px;image-rendering:pixelated"></canvas>
+  <div class="screen-sub">Drag across the pizza to slice it!<br>Match what the customer orders.<br>Each level gets harder — good luck!</div>
+  <button class="btn btn-red" onclick="startGame()">PLAY GAME</button>
+</div>
+
+<!-- GAME OVER -->
+<div id="gameover-screen">
+  <div class="big-title" id="go-title">GAME OVER</div>
+  <canvas id="go-pizza" width="130" height="130" style="margin:12px auto;display:block;image-rendering:pixelated"></canvas>
+  <div class="screen-sub" id="go-msg"></div>
+  <div style="font-size:13px;color:var(--border);margin-bottom:20px" id="go-score"></div>
+  <button class="btn btn-red" onclick="restartGame()">PLAY AGAIN</button>
+</div>
+
+<!-- HELP MODAL -->
+<div id="help-modal">
+  <div id="help-inner">
+    <button id="help-close" onclick="closeHelp()">X</button>
+    <h2>HOW TO PLAY</h2>
+    <div class="help-section">
+      <h3>CONTROLS</h3>
+      <div class="help-tip">Drag across the pizza to make a cut</div>
+      <div class="help-tip">SERVE when your slice count matches the order</div>
+      <div class="help-tip">UNDO removes your last cut</div>
+      <div class="help-tip">RESET clears all cuts</div>
+      <div class="help-tip">? button pauses the timer!</div>
+    </div>
+    <div class="help-section">
+      <h3>HOW TO GET EACH SLICE COUNT</h3>
+      <div class="help-row"><span class="help-num">x2</span><span class="help-desc">1 straight cut all the way across</span></div>
+      <div class="help-row"><span class="help-num">x3</span><span class="help-desc">2 parallel cuts that don't cross each other</span></div>
+      <div class="help-row"><span class="help-num">x4</span><span class="help-desc">2 cuts that cross inside the pizza (like + or X)</span></div>
+      <div class="help-row"><span class="help-num">x5</span><span class="help-desc">3 parallel cuts, or 1 crossing pair + 1 separate cut</span></div>
+      <div class="help-row"><span class="help-num">x6</span><span class="help-desc">3 cuts each crossing the others inside (3 interior meets)</span></div>
+      <div class="help-row"><span class="help-num">x7</span><span class="help-desc">4 cuts: 3 parallel + 1 that crosses all three</span></div>
+      <div class="help-row"><span class="help-num">x8</span><span class="help-desc">4 cuts with 3 pairs crossing inside (like a star)</span></div>
+      <div class="help-row"><span class="help-num">x9</span><span class="help-desc">4 cuts with 4 interior intersection points</span></div>
+      <div class="help-row"><span class="help-num">x10</span><span class="help-desc">5 cuts with 4 interior intersections — star pattern!</span></div>
+    </div>
+    <div class="help-section">
+      <h3>SCORING</h3>
+      <div class="help-tip">Perfect = 100 x level + time bonus</div>
+      <div class="help-tip">Off by 1 = half points + lose a life</div>
+      <div class="help-tip">Wrong = lose a life, no points</div>
+      <div class="help-tip">Streak bonus = +20 per consecutive perfect</div>
+      <div class="help-tip">Higher levels give you MORE time</div>
+    </div>
+    <div style="text-align:center;margin-top:12px">
+      <button class="btn btn-green" onclick="closeHelp()">GOT IT</button>
+    </div>
+  </div>
+</div>
+
+<!-- MAIN APP -->
+<div id="app">
+  <header>
+    <h1>PIZZA MASTER</h1>
+    <div class="sub">PIXEL PARLOR — SERVE EVERY SLICE</div>
+    <button id="help-btn" onclick="openHelp()">?</button>
+  </header>
+  <div id="scoreboard">
+    <div class="stat"><span class="label">SCORE</span><span class="val" id="score-val">0</span></div>
+    <div class="stat"><span class="label">LEVEL</span><span class="val" id="level-val">1</span></div>
+    <div class="stat"><span class="label">LIVES</span><div id="lives-display"></div></div>
+    <div class="stat"><span class="label">STREAK</span><span class="val" id="streak-val">0</span></div>
+  </div>
+  <div id="customer-panel">
+    <canvas id="customer-sprite" width="64" height="64"></canvas>
+    <div id="customer-bubble">
+      <div id="customer-text">Press PLAY GAME to begin!</div>
+      <div id="target-display"></div>
+    </div>
+  </div>
+  <div id="timer-wrap">
+    <div id="timer-bar" style="width:100%"></div>
+    <div id="timer-paused">PAUSED</div>
+  </div>
+  <div id="streak-label"></div>
+  <div id="game-area">
+    <div id="canvas-wrap">
+      <canvas id="pizza-canvas" width="400" height="400"></canvas>
+    </div>
+    <div id="side-panel">
+      <div class="panel-box"><h3>CUTS</h3><ul id="cut-list"><li style="color:#aaa">None yet</li></ul></div>
+      <div class="panel-box"><h3>SLICES</h3><p id="slice-count" style="font-family:'VT323',monospace;font-size:20px;color:var(--border)">—</p></div>
+      <div class="panel-box"><h3>HINT</h3><p id="side-tip" style="font-family:'VT323',monospace;font-size:15px;color:#bbb;line-height:1.5">Drag to cut!</p></div>
+    </div>
+  </div>
+  <div id="btn-row">
+    <button class="btn btn-red" onclick="resetCuts()">RESET</button>
+    <button class="btn btn-green" onclick="servePizza()">SERVE</button>
+    <button class="btn btn-yellow" onclick="undoCut()">UNDO</button>
+  </div>
+</div>
+
+<!-- FEEDBACK -->
+<div id="feedback">
+  <div id="feedback-inner">
+    <div id="feedback-title"></div>
+    <div id="feedback-msg"></div>
+    <button class="btn btn-green" onclick="hideFeedback()">NEXT</button>
+  </div>
+</div>
+
+<script>
+var CANVAS_SIZE=400,CX=200,CY=200,PIZZA_R=158,CRUST_W=20;
+var score=0,level=1,lives=3,streak=0,targetSlices=2;
+var cuts=[],dragging=false,dragStart=null,dragCurrent=null;
+var timerVal=100,timerInterval=null,timerSpeed=1;
+var gameActive=false,helpOpen=false;
+
+var CUSTOMERS=[
+  {name:"LUIGI",color:"#e63946",hatColor:"#c1121f"},
+  {name:"SOFIA",color:"#f4a261",hatColor:"#e76f51"},
+  {name:"BIG TONY",color:"#2dc653",hatColor:"#1a6e1a"},
+  {name:"YUKI",color:"#4cc9f0",hatColor:"#0077b6"},
+  {name:"MARCO",color:"#c77dff",hatColor:"#7b2d8b"},
+  {name:"BERTHA",color:"#ffd166",hatColor:"#ef8c00"},
+];
+var PHRASES={
+  2:["Split it down the middle!","Just 2 big slices!","Two-way split please!"],
+  3:["Three-way split pronto!","Tre fette per favore!","3 slices please!"],
+  4:["Four slices — classic!","Quattro! Like a real pizza!","4 equal pieces!"],
+  5:["Five slices please!","Cinque fette subito!","5 slices chef!"],
+  6:["Six slices — party size!","The full six-pack!","Sei fette!"],
+  7:["Lucky number 7!","Seven slices please!","Sette fette!"],
+  8:["Eight slices! Feed the squad!","Otto fette magnifico!","8 slices!"],
+  9:["Nine? You got this chef!","Nove fette per la famiglia!","9 slices go!"],
+  10:["TEN slices! Ultimate!","Dieci! True master!","10 perfect slices!"],
+};
+var TIPS={
+  2:"1 straight cut across",3:"2 parallel cuts",4:"2 cuts crossing inside",
+  5:"3 parallel cuts",6:"3 cuts, each pair crossing",7:"4 cuts, 3 crossing inside",
+  8:"4 cuts = 3 interior meets",9:"4 cuts = 4 interior meets",10:"5 cuts, star pattern!",
+};
+
+var canvas=document.getElementById('pizza-canvas');
+var ctx=canvas.getContext('2d');
+
+// ── GEOMETRY ──
+function circleLineIntersections(cx,cy,r,x1,y1,x2,y2){
+  var dx=x2-x1,dy=y2-y1,fx=x1-cx,fy=y1-cy;
+  var a=dx*dx+dy*dy;if(a<1e-10)return[];
+  var b=2*(fx*dx+fy*dy),c=fx*fx+fy*fy-r*r;
+  var disc=b*b-4*a*c;if(disc<0)return[];
+  var sq=Math.sqrt(disc),t1=(-b-sq)/(2*a),t2=(-b+sq)/(2*a);
+  if(Math.abs(t2-t1)<1e-6)return[];
+  return[{x:x1+t1*dx,y:y1+t1*dy},{x:x1+t2*dx,y:y1+t2*dy}];
+}
+function lineLineIntersect(ax1,ay1,ax2,ay2,bx1,by1,bx2,by2){
+  var d1x=ax2-ax1,d1y=ay2-ay1,d2x=bx2-bx1,d2y=by2-by1;
+  var den=d1x*d2y-d1y*d2x;if(Math.abs(den)<1e-8)return null;
+  var t=((bx1-ax1)*d2y-(by1-ay1)*d2x)/den;
+  return{x:ax1+t*d1x,y:ay1+t*d1y};
+}
+function inCircle(x,y){return(x-CX)*(x-CX)+(y-CY)*(y-CY)<(PIZZA_R-CRUST_W)*(PIZZA_R-CRUST_W)-1;}
+function countSlices(){
+  if(!cuts.length)return 1;
+  var R=PIZZA_R-CRUST_W,chords=[],X=0;
+  for(var i=0;i<cuts.length;i++){
+    if(circleLineIntersections(CX,CY,R,cuts[i].x1,cuts[i].y1,cuts[i].x2,cuts[i].y2).length===2)chords.push(i);
+  }
+  if(!chords.length)return 1;
+  for(var i=0;i<chords.length;i++)for(var j=i+1;j<chords.length;j++){
+    var p=lineLineIntersect(cuts[chords[i]].x1,cuts[chords[i]].y1,cuts[chords[i]].x2,cuts[chords[i]].y2,cuts[chords[j]].x1,cuts[chords[j]].y1,cuts[chords[j]].x2,cuts[chords[j]].y2);
+    if(p&&inCircle(p.x,p.y))X++;
+  }
+  return chords.length+X+1;
+}
+
+// ── PIXEL PIZZA DRAWING ──
+// Draws a pixel-art pizza inspired by the reference image
+// 32x32 grid, each cell = PX pixels on screen
+function drawPixelPizza(c,ox,oy,PX){
+  function p(x,y,w,h,col){c.fillStyle=col;c.fillRect(ox+Math.round(x*PX),oy+Math.round(y*PX),Math.round(w*PX),Math.round(h*PX));}
+
+  // Shadow
+  c.globalAlpha=0.3;
+  p(2,2,29,29,'#000');
+  c.globalAlpha=1.0;
+
+  // Full disk background (crust color) — approximate circle with rows
+  var diskRows=[
+    [11,0,10],[7,1,18],[4,2,24],[2,3,28],[1,4,30],[0,5,32],[0,6,32],[0,7,32],[0,8,32],[0,9,32],[0,10,32],
+    [0,11,32],[0,12,32],[0,13,32],[0,14,32],[0,15,32],[0,16,32],[0,17,32],[0,18,32],[0,19,32],[0,20,32],
+    [0,21,32],[0,22,32],[0,23,32],[0,24,32],[0,25,32],[0,26,32],[1,27,30],[2,28,28],[4,29,24],[7,30,18],[11,31,10]
+  ];
+  for(var i=0;i<diskRows.length;i++) p(diskRows[i][0],diskRows[i][1],diskRows[i][2],1,'#C8803A');
+
+  // Crust ring texture (darker outer edge, lighter next ring)
+  for(var i=0;i<diskRows.length;i++){
+    var rx=diskRows[i][0],ry=diskRows[i][1],rw=diskRows[i][2];
+    // dark outer pixels
+    p(rx,ry,2,1,'#8B4A1A'); p(rx+rw-2,ry,2,1,'#8B4A1A');
+    // mid highlight
+    p(rx+2,ry,2,1,'#E0A060'); p(rx+rw-4,ry,2,1,'#D09040');
+  }
+  // Crust bump dots
+  var bumps=[[12,0],[18,0],[8,1],[24,1],[5,2],[14,2],[22,2],[27,2],[3,3],[10,3],[20,3],[28,3],[1,4],[7,4],[25,4],[30,4],[0,6],[31,6],[0,25],[31,25],[1,27],[30,27],[3,28],[28,28],[5,29],[26,29],[8,30],[23,30],[12,31],[19,31]];
+  for(var i=0;i<bumps.length;i++) p(bumps[i][0],bumps[i][1],1,1,'#A05A20');
+  var bumpLight=[[13,0],[19,0],[9,1],[6,2],[23,2],[4,3],[11,3],[2,4],[8,4]];
+  for(var i=0;i<bumpLight.length;i++) p(bumpLight[i][0],bumpLight[i][1],1,1,'#F0B870');
+
+  // Inner cheese circle (smaller disk)
+  var cheeseRows=[
+    [13,2,6],[10,3,12],[7,4,18],[5,5,22],[4,6,24],[3,7,26],[2,8,28],[2,9,28],[1,10,30],
+    [1,11,30],[1,12,30],[1,13,30],[1,14,30],[1,15,30],[1,16,30],[1,17,30],[1,18,30],
+    [1,19,30],[1,20,30],[1,21,30],[1,22,30],[2,23,28],[2,24,28],[3,25,26],[4,26,24],
+    [5,27,22],[7,28,18],[10,29,12],[13,30,6]
+  ];
+  for(var i=0;i<cheeseRows.length;i++) p(cheeseRows[i][0],cheeseRows[i][1],cheeseRows[i][2],1,'#E8B830');
+
+  // Cheese texture — subtle grid lines
+  for(var row=5;row<=28;row+=2){
+    for(var col=3;col<29;col+=3) p(col,row,1,1,'#C89010');
+  }
+  // Cheese highlights
+  var chi=[[4,5],[10,5],[17,5],[24,5],[3,8],[9,8],[16,8],[23,8],[28,8],[3,11],[8,11],[15,11],[22,11],[27,11],[4,14],[10,14],[17,14],[24,14],[3,17],[9,17],[16,17],[23,17],[4,20],[11,20],[18,20],[25,20],[5,23],[12,23],[20,23],[27,23],[6,26],[14,26],[22,26]];
+  for(var i=0;i<chi.length;i++) p(chi[i][0],chi[i][1],1,1,'#F8D060');
+  // Cheese shadow dots
+  var csh=[[7,5],[14,5],[21,5],[6,8],[13,8],[20,8],[26,8],[5,11],[12,11],[19,11],[6,14],[13,14],[20,14],[5,17],[12,17],[19,17],[7,20],[14,20],[21,20],[8,23],[16,23],[9,26],[17,26]];
+  for(var i=0;i<csh.length;i++) p(csh[i][0],csh[i][1],1,1,'#B07800');
+
+  // Pepperoni — 8 pieces, pixel circles, dark red
+  var peps=[[5,5],[19,5],[12,4],[4,13],[23,13],[8,21],[21,21],[13,13]];
+  for(var i=0;i<peps.length;i++){
+    var px2=peps[i][0],py2=peps[i][1];
+    // 5x5 pixel circle
+    p(px2+1,py2,3,1,'#701010');
+    p(px2,py2+1,5,1,'#701010');
+    p(px2,py2+2,5,1,'#AA1818');
+    p(px2,py2+3,5,1,'#AA1818');
+    p(px2+1,py2+4,3,1,'#701010');
+    // inner highlight
+    p(px2+1,py2+1,2,1,'#CC2828');
+    p(px2+1,py2+2,1,1,'#EE4040');
+    // dark texture dots
+    p(px2+3,py2+1,1,1,'#500808');
+    p(px2+1,py2+3,1,1,'#500808');
+    p(px2+3,py2+3,1,1,'#500808');
+  }
+
+  // Green olives/pepper dots
+  var greens=[[9,9],[22,9],[15,6],[6,17],[26,17],[11,25],[22,25],[16,16]];
+  for(var i=0;i<greens.length;i++){
+    p(greens[i][0],greens[i][1],3,3,'#2A6A10');
+    p(greens[i][0]+1,greens[i][1],1,1,'#4A9A20');
+    p(greens[i][0],greens[i][1]+1,1,1,'#1A4A08');
+    p(greens[i][0]+2,greens[i][1]+2,1,1,'#1A4A08');
+  }
+}
+
+function drawPizza(){
+  ctx.clearRect(0,0,CANVAS_SIZE,CANVAS_SIZE);
+  var PX=CANVAS_SIZE/32;
+  drawPixelPizza(ctx,0,0,PX);
+  for(var i=0;i<cuts.length;i++) drawCutLine(cuts[i].x1,cuts[i].y1,cuts[i].x2,cuts[i].y2,'#FFFFFF',3,true);
+  if(dragging&&dragStart&&dragCurrent) drawCutLine(dragStart.x,dragStart.y,dragCurrent.x,dragCurrent.y,'#FFE066',2.5,false);
+}
+function drawPizzaOnCanvas(canvasEl,size){
+  var c=canvasEl.getContext('2d');
+  c.clearRect(0,0,canvasEl.width,canvasEl.height);
+  drawPixelPizza(c,0,0,canvasEl.width/32);
+}
+function drawCutLine(x1,y1,x2,y2,col,lw,dashed){
+  ctx.save();ctx.strokeStyle=col;ctx.lineWidth=lw;ctx.lineCap='square';
+  ctx.setLineDash(dashed?[7,5]:[]);
+  ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();
+  ctx.fillStyle=col;ctx.setLineDash([]);
+  ctx.fillRect(x1-4,y1-4,8,8);ctx.fillRect(x2-4,y2-4,8,8);
+  ctx.restore();
+}
+
+// ── CUSTOMER SPRITE ──
+function drawCustomerSprite(ce,cu){
+  var c=ce.getContext('2d');c.imageSmoothingEnabled=false;
+  var S=ce.width;c.clearRect(0,0,S,S);var P=S/16;
+  function f(x,y,w,h,col){c.fillStyle=col;c.fillRect(x*P,y*P,w*P,h*P);}
+  f(3,1,10,1,cu.hatColor);f(2,2,12,1,cu.hatColor);f(3,3,10,3,cu.hatColor);
+  f(4,6,8,7,'#F5CBA7');f(5,8,2,2,'#2c2c2c');f(9,8,2,2,'#2c2c2c');
+  f(6,11,4,1,'#c0392b');f(5,7,2,1,'#5d3a1a');f(9,7,2,1,'#5d3a1a');
+  c.globalAlpha=0.4;f(4,10,2,1,'#e07070');f(10,10,2,1,'#e07070');c.globalAlpha=1;
+  f(3,13,10,3,cu.color);
+}
+
+// ── LIVES ──
+function updateLivesDisplay(){
+  var el=document.getElementById('lives-display');el.innerHTML='';
+  for(var i=0;i<3;i++){
+    var s=document.createElementNS('http://www.w3.org/2000/svg','svg');
+    s.setAttribute('width','18');s.setAttribute('height','18');s.setAttribute('viewBox','0 0 18 18');
+    var ci=document.createElementNS('http://www.w3.org/2000/svg','circle');
+    ci.setAttribute('cx','9');ci.setAttribute('cy','9');ci.setAttribute('r','8');
+    ci.setAttribute('fill',i<lives?'#F9C74F':'#333');ci.setAttribute('stroke',i<lives?'#C68642':'#555');ci.setAttribute('stroke-width','2');
+    s.appendChild(ci);el.appendChild(s);
+  }
+}
+
+// ── TIMER ──
+function getTimerSpeed(lvl){
+  // Level 1 = 0.55%/tick (~18s), Level 10+ = 0.20%/tick (~50s)
+  return Math.max(0.20, 0.58-(lvl-1)*0.038);
+}
+function startTimer(){
+  clearInterval(timerInterval);timerVal=100;timerSpeed=getTimerSpeed(level);updateTimerBar();
+  timerInterval=setInterval(function(){
+    if(helpOpen)return;
+    timerVal=Math.max(0,timerVal-timerSpeed);updateTimerBar();
+    if(timerVal<=0){clearInterval(timerInterval);timeOut();}
+  },100);
+}
+function updateTimerBar(){
+  var b=document.getElementById('timer-bar');b.style.width=timerVal+'%';
+  b.style.background=timerVal>50?'#2DC653':timerVal>25?'#F7B731':'#E63946';
+}
+function timeOut(){
+  if(!gameActive)return;lives--;streak=0;updateLivesDisplay();
+  if(lives<=0){endGame(false);return;}
+  showFeedback('TIME UP!','You needed '+targetSlices+' slices.\nNext customer!',false);
+}
+
+// ── HELP ──
+function openHelp(){
+  helpOpen=true;
+  document.getElementById('help-modal').classList.add('show');
+  document.getElementById('timer-paused').style.display='flex';
+}
+function closeHelp(){
+  helpOpen=false;
+  document.getElementById('help-modal').classList.remove('show');
+  document.getElementById('timer-paused').style.display='none';
+}
+
+// ── INPUT ──
+function getCanvasPos(e){
+  var r=canvas.getBoundingClientRect(),sx=CANVAS_SIZE/r.width,sy=CANVAS_SIZE/r.height,cx,cy;
+  if(e.touches&&e.touches.length>0){cx=e.touches[0].clientX;cy=e.touches[0].clientY;}
+  else{cx=e.clientX;cy=e.clientY;}
+  return{x:(cx-r.left)*sx,y:(cy-r.top)*sy};
+}
+canvas.addEventListener('mousedown',function(e){if(gameActive&&!helpOpen)startDrag(getCanvasPos(e));});
+canvas.addEventListener('mousemove',function(e){if(dragging){dragCurrent=getCanvasPos(e);drawPizza();}});
+canvas.addEventListener('mouseup',function(e){if(gameActive&&dragging)endDrag(getCanvasPos(e));});
+canvas.addEventListener('mouseleave',function(e){if(gameActive&&dragging)endDrag(getCanvasPos(e));});
+canvas.addEventListener('touchstart',function(e){e.preventDefault();if(gameActive&&!helpOpen)startDrag(getCanvasPos(e));},{passive:false});
+canvas.addEventListener('touchmove',function(e){e.preventDefault();if(dragging){dragCurrent=getCanvasPos(e);drawPizza();}},{passive:false});
+canvas.addEventListener('touchend',function(e){
+  e.preventDefault();if(!gameActive||!dragging)return;
+  var r=canvas.getBoundingClientRect();
+  if(e.changedTouches.length>0)endDrag({x:(e.changedTouches[0].clientX-r.left)*(CANVAS_SIZE/r.width),y:(e.changedTouches[0].clientY-r.top)*(CANVAS_SIZE/r.height)});
+},{passive:false});
+
+function startDrag(pos){dragging=true;dragStart={x:pos.x,y:pos.y};dragCurrent={x:pos.x,y:pos.y};}
+function endDrag(pos){
+  dragging=false;
+  var dx=pos.x-dragStart.x,dy=pos.y-dragStart.y;
+  if(Math.sqrt(dx*dx+dy*dy)<20){drawPizza();return;}
+  if(circleLineIntersections(CX,CY,PIZZA_R-CRUST_W,dragStart.x,dragStart.y,pos.x,pos.y).length<2){drawPizza();return;}
+  cuts.push({x1:dragStart.x,y1:dragStart.y,x2:pos.x,y2:pos.y});
+  updateCutList();updateSliceCount();drawPizza();
+}
+
+// ── CUT UI ──
+function updateCutList(){
+  var ul=document.getElementById('cut-list');
+  if(!cuts.length){ul.innerHTML='<li style="color:#aaa">None yet</li>';return;}
+  ul.innerHTML=cuts.map(function(_,i){return'<li style="color:#aaa">Cut #'+(i+1)+'</li>';}).join('');
+}
+function updateSliceCount(){
+  var n=countSlices(),el=document.getElementById('slice-count');
+  el.textContent=n+(n!==1?' slices':' slice');
+  el.style.color=(targetSlices&&n===targetSlices)?'#2DC653':'var(--border)';
+}
+function resetCuts(){cuts=[];updateCutList();updateSliceCount();drawPizza();}
+function undoCut(){if(cuts.length){cuts.pop();updateCutList();updateSliceCount();drawPizza();}}
+
+// ── LEVEL SETUP ──
+function getTargetSlices(lvl){
+  var mn=Math.min(2+Math.floor((lvl-1)*0.9),10);
+  var mx=Math.min(mn+1,10);
+  return mn+Math.floor(Math.random()*(mx-mn+1));
+}
+function loadLevel(){
+  cuts=[];targetSlices=getTargetSlices(level);
+  var cu=CUSTOMERS[Math.floor(Math.random()*CUSTOMERS.length)];
+  var ph=PHRASES[targetSlices]||['Give me '+targetSlices+' slices!'];
+  document.getElementById('level-val').textContent=level;
+  document.getElementById('score-val').textContent=score;
+  document.getElementById('streak-val').textContent=streak;
+  document.getElementById('customer-text').textContent=cu.name+': "'+ph[Math.floor(Math.random()*ph.length)]+'"';
+  document.getElementById('target-display').textContent='Need: '+targetSlices+(targetSlices>1?' slices':' slice');
+  document.getElementById('side-tip').textContent=TIPS[targetSlices]||'Make your cuts!';
+  drawCustomerSprite(document.getElementById('customer-sprite'),cu);
+  updateCutList();updateSliceCount();startTimer();drawPizza();updateLivesDisplay();
+}
+
+// ── SERVE ──
+function servePizza(){
+  if(!gameActive)return;
+  clearInterval(timerInterval);
+  var actual=countSlices(),diff=Math.abs(actual-targetSlices),tb=Math.round(timerVal*0.5);
+  if(diff===0){
+    streak++;var pts=100*level+tb+(streak>1?streak*20:0);score+=pts;
+    document.getElementById('streak-val').textContent=streak;
+    showFeedback(streak>=3?'STREAK x'+streak+'!':'PERFECT!',actual+' slices! +'+pts+' pts'+(tb>0?'\nTime bonus: +'+tb:'')+(streak>=3?'\nStreak x'+streak+'!':''),true);
+    level++;
+  }else if(diff===1){
+    streak=0;var pts=Math.round(50*level*0.5);score+=pts;lives--;updateLivesDisplay();
+    showFeedback('CLOSE!','Cut '+actual+', needed '+targetSlices+'.\n+'+pts+' pts — be exact!',false);
+    if(lives<=0){setTimeout(function(){endGame(false);},2000);return;}level++;
+  }else{
+    streak=0;lives--;updateLivesDisplay();
+    showFeedback('WRONG!','Cut '+actual+' slices,\nneeded '+targetSlices+'.\nLose a life!',false);
+    if(lives<=0){setTimeout(function(){endGame(false);},2000);return;}
+  }
+}
+
+// ── FEEDBACK ──
+function showFeedback(title,msg,good){
+  document.getElementById('feedback-title').textContent=title;
+  document.getElementById('feedback-title').style.color=good?'#2DC653':'#E63946';
+  document.getElementById('feedback-msg').textContent=msg;
+  document.getElementById('feedback').classList.add('show');
+}
+function hideFeedback(){document.getElementById('feedback').classList.remove('show');loadLevel();}
+
+// ── GAME FLOW ──
+function startGame(){
+  document.getElementById('start-screen').style.display='none';
+  score=0;level=1;lives=3;streak=0;gameActive=true;loadLevel();
+}
+function endGame(won){
+  gameActive=false;clearInterval(timerInterval);
+  document.getElementById('gameover-screen').style.display='flex';
+  document.getElementById('go-title').textContent=won?'YOU WIN!':'GAME OVER';
+  document.getElementById('go-msg').textContent=won?'You mastered the pizza!':'Better luck next time, chef!';
+  document.getElementById('go-score').textContent='FINAL SCORE: '+score;
+  drawPizzaOnCanvas(document.getElementById('go-pizza'),130);
+}
+function restartGame(){
+  document.getElementById('gameover-screen').style.display='none';
+  score=0;level=1;lives=3;streak=0;gameActive=true;loadLevel();
+}
+
+// ── LOADING SCREEN ──
+(function(){
+  var msgs=['Preheating the oven...','Kneading the dough...','Spreading the sauce...','Adding cheese...','Placing toppings...','Sharpening the cutter...','Ready to serve!'];
+  drawPizzaOnCanvas(document.getElementById('load-pizza-canvas'),160);
+  var bar=document.getElementById('load-bar'),txt=document.getElementById('load-text');
+  var prog=0,msgIdx=0;
+  var iv=setInterval(function(){
+    prog+=Math.random()*7+4;if(prog>100)prog=100;
+    bar.style.width=prog+'%';
+    var ni=Math.min(Math.floor(prog/15),msgs.length-1);
+    if(ni!==msgIdx){msgIdx=ni;txt.textContent=msgs[msgIdx];}
+    if(prog>=100){
+      clearInterval(iv);
+      setTimeout(function(){
+        document.getElementById('loading-screen').style.display='none';
+        var ss=document.getElementById('start-screen');ss.style.display='flex';
+        drawPizzaOnCanvas(document.getElementById('start-pizza'),160);
+        drawPizza();
+      },350);
+    }
+  },110);
+})();
+</script>
+</body>
+</html>
