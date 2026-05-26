@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ARCADE HUB — GAME SELECT</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --black:   #000000;
+      --green:   #39ff14;
+      --green2:  #00cc00;
+      --green3:  #004400;
+      --amber:   #ffb300;
+      --amber2:  #cc7700;
+      --red:     #ff2222;
+      --cyan:    #00ffff;
+      --white:   #ccffcc;
+      --dim:     #226622;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--black);
+      color: var(--green);
+      font-family: 'Press Start 2P', monospace;
+      min-height: 100vh;
+      overflow-x: hidden;
+      /* CRT curvature illusion via vignette */
+      position: relative;
+    }
+
+    /* ── CRT scanlines ── */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background: repeating-linear-gradient(
+        0deg,
+        rgba(0,0,0,0.18) 0px,
+        rgba(0,0,0,0.18) 1px,
+        transparent 1px,
+        transparent 3px
+      );
+      pointer-events: none;
+      z-index: 9999;
+    }
+
+    /* ── CRT vignette ── */
+    body::after {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background: radial-gradient(ellipse at center,
+        transparent 60%,
+        rgba(0,0,0,0.75) 100%
+      );
+      pointer-events: none;
+      z-index: 9998;
+    }
+
+    /* ── Dot-matrix background ── */
+    .bg-dots {
+      position: fixed;
+      inset: 0;
+      background-image: radial-gradient(circle, #001a00 1px, transparent 1px);
+      background-size: 24px 24px;
+      z-index: 0;
+      opacity: 0.5;
+    }
+
+    /* ════════════════════════════
+       HEADER
+    ════════════════════════════ */
+    header {
+      position: relative;
+      z-index: 10;
+      text-align: center;
+      padding: 40px 16px 24px;
+      border-bottom: 4px solid var(--green3);
+    }
+
+    .coin-prompt {
+      font-family: 'VT323', monospace;
+      font-size: 22px;
+      color: var(--amber);
+      letter-spacing: 4px;
+      margin-bottom: 20px;
+      animation: blink 1s step-end infinite;
+    }
+
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: 0; }
+    }
+
+    /* Pixel-art style title using box shadows */
+    h1 {
+      font-family: 'Press Start 2P', monospace;
+      font-size: clamp(18px, 5vw, 42px);
+      color: var(--green);
+      text-shadow:
+        3px 3px 0 var(--green3),
+        0 0 20px var(--green),
+        0 0 40px rgba(57,255,20,0.4);
+      letter-spacing: 4px;
+      line-height: 1.4;
+      animation: flicker 6s infinite;
+    }
+
+    h1 .hi { color: var(--amber); text-shadow: 3px 3px 0 #442200, 0 0 20px var(--amber); }
+
+    @keyframes flicker {
+      0%,95%,100% { opacity: 1; }
+      96%          { opacity: 0.85; }
+      97%          { opacity: 1; }
+      98%          { opacity: 0.7; }
+      99%          { opacity: 1; }
+    }
+
+    .header-rule {
+      margin: 20px auto;
+      max-width: 600px;
+      height: 4px;
+      background: repeating-linear-gradient(
+        90deg,
+        var(--green) 0px, var(--green) 8px,
+        transparent 8px, transparent 16px
+      );
+    }
+
+    .header-stats {
+      font-family: 'VT323', monospace;
+      font-size: 20px;
+      color: var(--dim);
+      letter-spacing: 3px;
+      margin-top: 10px;
+    }
+
+    .header-stats span { color: var(--cyan); }
+
+    /* ════════════════════════════
+       TICKER
+    ════════════════════════════ */
+    .ticker-wrap {
+      position: relative;
+      z-index: 10;
+      background: var(--green3);
+      border-top: 2px solid var(--green);
+      border-bottom: 2px solid var(--green);
+      padding: 6px 0;
+      overflow: hidden;
+      white-space: nowrap;
+    }
+
+    .ticker-inner {
+      display: inline-block;
+      animation: ticker 22s linear infinite;
+      font-family: 'VT323', monospace;
+      font-size: 18px;
+      color: var(--amber);
+      letter-spacing: 3px;
+    }
+
+    @keyframes ticker {
+      from { transform: translateX(100vw); }
+      to   { transform: translateX(-100%); }
+    }
+
+    /* ════════════════════════════
+       GAME GRID
+    ════════════════════════════ */
+    .grid-wrapper {
+      position: relative;
+      z-index: 10;
+      max-width: 1300px;
+      margin: 0 auto;
+      padding: 36px 20px 60px;
+    }
+
+    .section-label {
+      font-family: 'VT323', monospace;
+      font-size: 22px;
+      color: var(--dim);
+      letter-spacing: 5px;
+      margin-bottom: 24px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .section-label::after {
+      content: '';
+      flex: 1;
+      height: 2px;
+      background: var(--green3);
+    }
+
+    .games-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 16px;
+    }
+
+    /* ── CARD ── */
+    .game-card {
+      position: relative;
+      background: #050f05;
+      border: 2px solid var(--green3);
+      padding: 0;
+      text-decoration: none;
+      color: var(--green);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      transition: border-color 0.1s, box-shadow 0.1s;
+      image-rendering: pixelated;
+      /* stagger in */
+      opacity: 0;
+      transform: translateY(12px);
+      animation: cardIn 0.3s ease forwards;
+    }
+
+    .game-card:nth-child(1)  { animation-delay: 0.05s; }
+    .game-card:nth-child(2)  { animation-delay: 0.10s; }
+    .game-card:nth-child(3)  { animation-delay: 0.15s; }
+    .game-card:nth-child(4)  { animation-delay: 0.20s; }
+    .game-card:nth-child(5)  { animation-delay: 0.25s; }
+    .game-card:nth-child(6)  { animation-delay: 0.30s; }
+    .game-card:nth-child(7)  { animation-delay: 0.35s; }
+    .game-card:nth-child(8)  { animation-delay: 0.40s; }
+    .game-card:nth-child(9)  { animation-delay: 0.45s; }
+    .game-card:nth-child(10) { animation-delay: 0.50s; }
+    .game-card:nth-child(11) { animation-delay: 0.55s; }
+    .game-card:nth-child(12) { animation-delay: 0.60s; }
+
+    @keyframes cardIn {
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .game-card:hover {
+      border-color: var(--green);
+      box-shadow: 0 0 0 2px var(--green), 0 0 18px rgba(57,255,20,0.3), inset 0 0 30px rgba(57,255,20,0.04);
+    }
+
+    /* Pixel corner markers */
+    .game-card::before,
+    .game-card::after {
+      content: '';
+      position: absolute;
+      width: 8px; height: 8px;
+      background: var(--green3);
+      z-index: 2;
+      transition: background 0.1s;
+    }
+    .game-card::before { top: 4px; left: 4px; }
+    .game-card::after  { bottom: 4px; right: 4px; }
+    .game-card:hover::before,
+    .game-card:hover::after { background: var(--green); }
+
+    /* Card header bar */
+    .card-header {
+      background: var(--green3);
+      padding: 6px 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-family: 'VT323', monospace;
+      font-size: 16px;
+      color: var(--green2);
+      letter-spacing: 2px;
+    }
+
+    .game-card:hover .card-header {
+      background: #005500;
+      color: var(--green);
+    }
+
+    .card-num { color: var(--amber); }
+
+    /* Card body */
+    .card-body {
+      padding: 20px 16px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      flex: 1;
+    }
+
+    .card-pixel-icon {
+      font-size: 32px;
+      line-height: 1;
+      filter: drop-shadow(0 0 6px var(--green));
+    }
+
+    .card-title {
+      font-family: 'Press Start 2P', monospace;
+      font-size: 11px;
+      color: var(--white);
+      line-height: 1.6;
+      text-shadow: 1px 1px 0 var(--green3);
+    }
+
+    .game-card:hover .card-title {
+      color: var(--green);
+      text-shadow: 0 0 8px var(--green);
+    }
+
+    .card-genre {
+      font-family: 'VT323', monospace;
+      font-size: 16px;
+      color: var(--dim);
+      letter-spacing: 2px;
+    }
+
+    /* Play button */
+    .card-play {
+      margin-top: auto;
+      font-family: 'VT323', monospace;
+      font-size: 20px;
+      letter-spacing: 3px;
+      color: var(--green3);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding-top: 10px;
+      border-top: 1px dashed var(--green3);
+      transition: color 0.1s;
+    }
+
+    .game-card:hover .card-play {
+      color: var(--amber);
+      animation: blink 0.6s step-end infinite;
+    }
+
+    .cursor-blink {
+      display: inline-block;
+      width: 10px; height: 16px;
+      background: currentColor;
+      vertical-align: middle;
+      animation: blink 0.8s step-end infinite;
+    }
+
+    /* ════════════════════════════
+       FOOTER
+    ════════════════════════════ */
+    footer {
+      position: relative;
+      z-index: 10;
+      border-top: 4px solid var(--green3);
+      padding: 20px 16px;
+      text-align: center;
+    }
+
+    .footer-rule {
+      max-width: 500px;
+      margin: 0 auto 14px;
+      height: 2px;
+      background: repeating-linear-gradient(
+        90deg,
+        var(--green3) 0px, var(--green3) 6px,
+        transparent 6px, transparent 12px
+      );
+    }
+
+    .footer-text {
+      font-family: 'VT323', monospace;
+      font-size: 16px;
+      color: var(--dim);
+      letter-spacing: 3px;
+    }
+
+    .footer-text .hi { color: var(--amber); animation: blink 1.4s step-end infinite; }
+
+    /* ── RESPONSIVE ── */
+    @media (max-width: 500px) {
+      h1 { font-size: 16px; }
+      .games-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
+      .card-title { font-size: 8px; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="bg-dots"></div>
+
+  <!-- HEADER -->
+  <header>
+    <div class="coin-prompt">&gt;&gt; INSERT COIN TO CONTINUE &lt;&lt;</div>
+    <h1>ARCADE&nbsp;<span class="hi">HUB</span><br>GAME&nbsp;SELECT</h1>
+    <div class="header-rule"></div>
+    <div class="header-stats">GAMES ONLINE: <span>12 / 12</span> &nbsp;|&nbsp; HI-SCORE: <span>999999</span></div>
+  </header>
+
+  <!-- SCROLLING TICKER -->
+  <div class="ticker-wrap" aria-hidden="true">
+    <span class="ticker-inner">
+      ★ 1V1.LOL ★ DANCE OF FIRE &amp; ICE ★ BASKET RANDOM ★ BLADE BALL ★ CROSSY ROAD ★ DEADZONE ★ EAGLERCRAFT ★ FLAPPY DUNK ★ FORTZONE ★ PIZZA MASTER ★ STICKMAN HOOK ★ TOMB OF THE MASK ★&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+    </span>
+  </div>
+
+  <!-- GRID -->
+  <div class="grid-wrapper">
+    <div class="section-label">// SELECT GAME</div>
+    <div class="games-grid">
+
+      <a class="game-card" href="1v1.LOL.html">
+        <div class="card-header">
+          <span>GAME</span><span class="card-num">#01</span>
+        </div>
+        <div class="card-body">
+          <div class="card-pixel-icon">🔫</div>
+          <div class="card-title">1V1.LOL</div>
+          <div class="card-genre">SHOOTER / BUILD</div>
+          <div class="card-play">▶ PLAY NOW <span class="cursor-blink"></span></div>
+        </div>
+      </a>
+
+      <a class="game-card" href="A Dance Of Fire And Ice.html">
+        <div class="card-header">
+          <span>GAME</span><span class="card-num">#02</span>
+        </div>
+        <div class="card-body">
+          <div class="card-pixel-icon">🎵</div>
+          <div class="card-title">DANCE OF FIRE &amp; ICE</div>
+          <div class="card-genre">RHYTHM / PRECISION</div>
+          <div class="card-play">▶ PLAY NOW <span class="cursor-blink"></span></div>
+        </div>
+      </a>
+
+      <a class="game-card" href="Basket Random.html">
+        <div class="card-header">
+          <span>GAME</span><span class="card-num">#03</span>
+        </div>
+        <div class="card-body">
+          <div class="card-pixel-icon">🏀</div>
+          <div class="card-title">BASKET RANDOM</div>
+          <div class="card-genre">SPORTS / CHAOS</div>
+          <div class="card-play">▶ PLAY NOW <span class="cursor-blink"></span></div>
+        </div>
+      </a>
+
+      <a class="game-card" href="Blade Ball.html">
+        <div class="card-header">
+          <span>GAME</span><span class="card-num">#04</span>
+        </div>
+        <div class="card-body">
+          <div class="card-pixel-icon">⚔️</div>
+          <div class="card-title">BLADE BALL</div>
+          <div class="card-genre">ACTION / REFLEX</div>
+          <div class="card-play">▶ PLAY NOW <span class="cursor-blink"></span></div>
+        </div>
+      </a>
+
+      <a class="game-card" href="Crossy Road/index.html">
+        <div class="card-header">
+          <span>GAME</span><span class="card-num">#05</span>
+        </div>
+        <div class="card-body">
+          <div class="card-pixel-icon">🐔</div>
+          <div class="card-title">CROSSY ROAD</div>
+          <div class="card-genre">ARCADE / ENDLESS</div>
+          <div class="card-play">▶ PLAY NOW <span class="cursor-blink"></span></div>
+        </div>
+      </a>
+
+      <a class="game-card" href="deadzone.html">
+        <div class="card-header">
+          <span>GAME</span><span class="card-num">#06</span>
+        </div>
+        <div class="card-body">
+          <div class="card-pixel-icon">☢️</div>
+          <div class="card-title">DEADZONE</div>
+          <div class="card-genre">SHOOTER / SURVIVAL</div>
+          <div class="card-play">▶ PLAY NOW <span class="cursor-blink"></span></div>
+        </div>
+      </a>
+
+      <a class="game-card" href="EaglerCraft1.20.html">
+        <div class="card-header">
+          <span>GAME</span><span class="card-num">#07</span>
+        </div>
+        <div class="card-body">
+          <div class="card-pixel-icon">⛏️</div>
+          <div class="card-title">EAGLERCRAFT 1.20</div>
+          <div class="card-genre">SANDBOX / BUILD</div>
+          <div class="card-play">▶ PLAY NOW <span class="cursor-blink"></span></div>
+        </div>
+      </a>
+
+      <a class="game-card" href="Flappy Dunk.html">
+        <div class="card-header">
+          <span>GAME</span><span class="card-num">#08</span>
+        </div>
+        <div class="card-body">
+          <div class="card-pixel-icon">🏅</div>
+          <div class="card-title">FLAPPY DUNK</div>
+          <div class="card-genre">CASUAL / SKILL</div>
+          <div class="card-play">▶ PLAY NOW <span class="cursor-blink"></span></div>
+        </div>
+      </a>
+
+      <a class="game-card" href="FortZone.html">
+        <div class="card-header">
+          <span>GAME</span><span class="card-num">#09</span>
+        </div>
+        <div class="card-body">
+          <div class="card-pixel-icon">🏰</div>
+          <div class="card-title">FORTZONE</div>
+          <div class="card-genre">STRATEGY / BUILD</div>
+          <div class="card-play">▶ PLAY NOW <span class="cursor-blink"></span></div>
+        </div>
+      </a>
+
+      <a class="game-card" href="pizza-master.html">
+        <div class="card-header">
+          <span>GAME</span><span class="card-num">#10</span>
+        </div>
+        <div class="card-body">
+          <div class="card-pixel-icon">🍕</div>
+          <div class="card-title">PIZZA MASTER</div>
+          <div class="card-genre">CASUAL / COOKING</div>
+          <div class="card-play">▶ PLAY NOW <span class="cursor-blink"></span></div>
+        </div>
+      </a>
+
+      <a class="game-card" href="Stickman Hook.html">
+        <div class="card-header">
+          <span>GAME</span><span class="card-num">#11</span>
+        </div>
+        <div class="card-body">
+          <div class="card-pixel-icon">🕷️</div>
+          <div class="card-title">STICKMAN HOOK</div>
+          <div class="card-genre">PLATFORM / SWING</div>
+          <div class="card-play">▶ PLAY NOW <span class="cursor-blink"></span></div>
+        </div>
+      </a>
+
+      <a class="game-card" href="Tomb Of The Mask.html">
+        <div class="card-header">
+          <span>GAME</span><span class="card-num">#12</span>
+        </div>
+        <div class="card-body">
+          <div class="card-pixel-icon">💀</div>
+          <div class="card-title">TOMB OF THE MASK</div>
+          <div class="card-genre">ARCADE / RETRO</div>
+          <div class="card-play">▶ PLAY NOW <span class="cursor-blink"></span></div>
+        </div>
+      </a>
+
+    </div>
+  </div>
+
+  <!-- FOOTER -->
+  <footer>
+    <div class="footer-rule"></div>
+    <div class="footer-text">
+      © ARCADE HUB &nbsp;|&nbsp; <span class="hi">GAME OVER? NEVER.</span> &nbsp;|&nbsp; PRESS START
+    </div>
+  </footer>
+
+</body>
+</html>
